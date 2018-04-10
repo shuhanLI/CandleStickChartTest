@@ -374,7 +374,8 @@ public class BarChartRenderer extends DataRenderer {
 
                 prepareBarHighlight(x, y1, y2, barspaceHalf, trans);
 
-                c.drawRect(mBarRect, mHighlightPaint);
+                c.drawLine(mBarRect.centerX(), mViewPortHandler.getContentRect().bottom, mBarRect.centerX(), 0, mHighlightPaint);
+                //c.drawRect(mBarRect, mHighlightPaint);
 
                 if (mChart.isDrawHighlightArrowEnabled()) {
 

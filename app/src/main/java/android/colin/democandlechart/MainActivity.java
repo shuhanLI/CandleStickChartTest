@@ -18,20 +18,30 @@ import com.android.volley.Response;
 import com.android.volley.VolleyError;
 import com.android.volley.toolbox.StringRequest;
 import com.android.volley.toolbox.Volley;
+import com.github.mikephil.charting.charts.BarChart;
+import com.github.mikephil.charting.charts.Chart;
 import com.github.mikephil.charting.charts.CombinedChart;
+import com.github.mikephil.charting.charts.LineChart;
 import com.github.mikephil.charting.components.Legend;
+import com.github.mikephil.charting.components.LimitLine;
 import com.github.mikephil.charting.components.XAxis;
 import com.github.mikephil.charting.components.YAxis;
+import com.github.mikephil.charting.data.BarData;
+import com.github.mikephil.charting.data.BarDataSet;
+import com.github.mikephil.charting.data.BarEntry;
 import com.github.mikephil.charting.data.CandleData;
 import com.github.mikephil.charting.data.CandleDataSet;
 import com.github.mikephil.charting.data.CandleEntry;
 import com.github.mikephil.charting.data.CombinedData;
+import com.github.mikephil.charting.data.DataSet;
 import com.github.mikephil.charting.data.Entry;
 import com.github.mikephil.charting.data.LineData;
 import com.github.mikephil.charting.data.LineDataSet;
+import com.github.mikephil.charting.formatter.YAxisValueFormatter;
 import com.github.mikephil.charting.highlight.Highlight;
 import com.github.mikephil.charting.interfaces.datasets.ILineDataSet;
 import com.github.mikephil.charting.listener.OnChartValueSelectedListener;
+import com.github.mikephil.charting.utils.Utils;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -40,6 +50,7 @@ import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.text.DecimalFormat;
 import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.List;
@@ -47,6 +58,8 @@ import java.util.List;
 public class MainActivity extends AppCompatActivity {
     private String TAG = "qqq";
     private CombinedChart mChart;
+    private LineChart lineChart;
+    private BarChart barChart;
     private Button btn;
     private int itemcount;
     private LineData lineData;
@@ -74,15 +87,22 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_combine);
 
-        mChart = (CombinedChart) findViewById(R.id.chart);
-        StringRequest stringRequest = new StringRequest(Request.Method.GET, "https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&symbol=FB&interval=1min&apikey=L555O39L1KYEB8IL",
+        //mChart = (CombinedChart) findViewById(R.id.chart);      //http://money18.on.cc/chartdata/d1/price/02318_price_d1.txt
+        lineChart = (LineChart) findViewById(R.id.lchart);       //http://money18.on.cc/chartdata/full/price/00700_price_full.txt
+        barChart = (BarChart) findViewById(R.id.bchart);
+        StringRequest stringRequest = new StringRequest(Request.Method.GET, "http://money18.on.cc/chartdata/d1/price/02318_price_d1.txt",
                 new Response.Listener<String>() {
                     @Override
                     public void onResponse(String response) {
                         //System.out.println("-----Main setdata-----:"+response);
-                        Model.setData(response);
-                        initChart();
-                        loadChartData();
+                        Model.setDataF(response);
+
+                        initChartF();
+
+                        loadChartDataF();
+
+
+
                     }
                 }, new Response.ErrorListener() {
             @Override
@@ -100,6 +120,7 @@ public class MainActivity extends AppCompatActivity {
 
 
 
+// k线图
     private void initChart() {
         colorHomeBg = getResources().getColor(R.color.home_page_bg);
         colorLine = getResources().getColor(R.color.common_divider);
@@ -175,7 +196,7 @@ public class MainActivity extends AppCompatActivity {
         //List<StockListBean.eachTime> stockBeans = Model.getData();
         List<String> DateInfo = Model.getDate();
         xVals = new ArrayList<>();
-        for (int i = itemcount-1; i >=0; i--) {
+        for (int i = 0; i < itemcount; i++) {
             xVals.add(DateInfo.get(i));
         }
 
@@ -211,11 +232,31 @@ public class MainActivity extends AppCompatActivity {
         mChart.invalidate();
     }
 
+    private BarDataSet generateBarDataSet(List<BarEntry> entries, int color, String label){
+        BarDataSet set = new BarDataSet(entries, label);
+        set.setColor(color);
+        barChart.getLegend().setPosition(Legend.LegendPosition.ABOVE_CHART_LEFT);//设置注解的位置在左上方
+        barChart.getLegend().setForm(Legend.LegendForm.CIRCLE);//这是左边显示小图标的形状
+
+        barChart.getXAxis().setPosition(XAxis.XAxisPosition.BOTTOM);//设置X轴的位置
+        barChart.getXAxis().setDrawGridLines(false);//不显示网格
+
+        barChart.getAxisRight().setEnabled(false);//右侧不显示Y轴
+        barChart.getAxisLeft().setAxisMinValue(0.0f);//设置Y轴显示最小值，不然0下面会有空隙
+        barChart.getAxisLeft().setDrawGridLines(false);//不设置Y轴网格
+
+
+        barChart.animateXY(1000, 2000);//设置动画
+
+
+        return set;
+    }
+
     private LineDataSet generateLineDataSet(List<Entry> entries, int color, String label) {
         LineDataSet set = new LineDataSet(entries, label);
         set.setColor(color);
         set.setLineWidth(1f);
-        set.setDrawCubic(true);//圆滑曲线
+        //set.setDrawCubic(true);//圆滑曲线
         set.setDrawCircles(false);
         set.setDrawCircleHole(false);
         set.setDrawValues(false);
@@ -261,4 +302,281 @@ public class MainActivity extends AppCompatActivity {
 
         return candleData;
     }
+
+    // 分时图
+    private void initChartF() {
+        lineChart.setScaleEnabled(false);
+        lineChart.setDrawBorders(true);
+        lineChart.setBorderWidth(1);
+        lineChart.setBorderColor(getResources().getColor(R.color.edit_text_underline));
+        lineChart.setDescription("");
+        Legend lineChartLegend = lineChart.getLegend();
+        lineChartLegend.setEnabled(false);
+
+        lineChart.setTouchEnabled(true); // 设置是否可以触摸
+        lineChart.setDragEnabled(true);// 是否可以拖拽
+
+        lineChart.setScaleXEnabled(true); //是否可以缩放 仅x轴
+        lineChart.setScaleYEnabled(true); //是否可以缩放 仅y轴
+        lineChart.setPinchZoom(true);  //设置x轴和y轴能否同时缩放。默认是否
+        lineChart.setDoubleTapToZoomEnabled(true);//设置是否可以通过双击屏幕放大图表。默认是true
+        lineChart.setHighlightPerDragEnabled(true);//能否拖拽高亮线(数据点与坐标的提示线)，默认是true
+        lineChart.setDragDecelerationEnabled(true);//拖拽滚动时，手放开是否会持续滚动，默认是true（false是拖到哪是哪，true拖拽之后还会有缓冲）
+        lineChart.setDragDecelerationFrictionCoef(0.99f);//与上面那个属性配合，持续滚动时的速度快慢，[0,1) 0代表立即停止。
+
+        barChart.setScaleEnabled(false);
+        barChart.setDrawBorders(false);
+      /*  barChart.setBorderWidth(1);
+        barChart.setBorderColor(getResources().getColor(R.color.grayLine));*/
+        barChart.setDescription("");
+        Legend barChartLegend = barChart.getLegend();
+        barChartLegend.setEnabled(false);
+
+
+        //x轴
+        XAxis xAxis = lineChart.getXAxis();
+        xAxis.setPosition(XAxis.XAxisPosition.BOTTOM);
+        xAxis.setLabelsToSkip(59);
+
+
+
+        //左边y
+        YAxis axisLeft = lineChart.getAxisLeft();
+        axisLeft.setLabelCount(5, true);
+        axisLeft.setDrawLabels(true);
+
+//        //右边y
+        YAxis axisRight = lineChart.getAxisRight();
+        axisRight.setEnabled(false);
+//        YAxis axisRight = lineChart.getAxisRight();
+//        axisRight.setLabelCount(5, true);
+//        axisRight.setDrawLabels(true);
+
+        //bar x y轴
+        XAxis xAxisBar = barChart.getXAxis();
+        xAxisBar.setDrawLabels(false);
+        xAxisBar.setDrawGridLines(false);
+
+        YAxis axisLeftBar = barChart.getAxisLeft();
+        axisLeftBar.setDrawGridLines(false);
+
+
+        YAxis axisRightBar = barChart.getAxisRight();
+        // axisRightBar.setDrawLabels(false);
+        axisRightBar.setDrawGridLines(false);
+
+        //y轴样式
+        axisLeft.setValueFormatter(new YAxisValueFormatter() {
+            @Override
+            public String getFormattedValue(float value, YAxis yAxis) {
+                DecimalFormat mFormat = new DecimalFormat("#0.00");
+                return mFormat.format(value);
+            }
+        });
+
+
+//        axisRight.setValueFormatter(new YAxisValueFormatter() {
+//            @Override
+//            public String getFormattedValue(float value, YAxis yAxis) {
+//                DecimalFormat mFormat = new DecimalFormat("#0.00%");
+//                return mFormat.format(value);
+//            }
+//        });
+//
+//        axisRight.setStartAtZero(false);
+//        axisRight.setDrawGridLines(false);
+//        axisRight.setDrawAxisLine(false);
+        //背景线
+        xAxis.setGridColor(getResources().getColor(R.color.edit_text_underline));
+        xAxis.setAxisLineColor(getResources().getColor(R.color.edit_text_underline));
+        axisLeft.setGridColor(getResources().getColor(R.color.edit_text_underline));
+        //axisRight.setAxisLineColor(getResources().getColor(R.color.edit_text_underline));
+
+            /* 联动高亮listener */
+        lineChart.setOnChartValueSelectedListener(new OnChartValueSelectedListener() {
+            @Override
+            public void onValueSelected(Entry e, int dataSetIndex, Highlight h) {
+                barChart.highlightValues(new Highlight[]{h});
+                System.out.println("listener worked");
+            }
+
+            @Override
+            public void onNothingSelected() {
+
+            }
+        });
+        barChart.setOnChartValueSelectedListener(new OnChartValueSelectedListener() {
+            @Override
+            public void onValueSelected(Entry e, int dataSetIndex, Highlight h) {
+                lineChart.highlightValues(new Highlight[]{h});
+            }
+
+            @Override
+            public void onNothingSelected() {
+
+            }
+        });
+
+    }
+
+    private void loadChartDataF(){
+        lineChart.resetTracking();
+        barChart.resetTracking();
+
+        List<Entry> lineEntries = Model.getLineEntries();
+        List<BarEntry> barEntries = Model.getBarEntries();
+
+        itemcount = lineEntries.size();
+        System.out.println("----itemcount : "+itemcount);
+        //List<StockListBean.eachTime> stockBeans = Model.getData();
+        List<String> MinInfo = Model.getMin();
+        xVals = new ArrayList<>();
+        for (int i = 0; i < itemcount; i++) {
+            xVals.add(MinInfo.get(i));
+        }
+
+        BarDataSet set2 = generateBarDataSet(barEntries, getResources().getColor(R.color.text_grey_light), "minVol");
+        BarData data2 = new BarData(xVals, set2);
+        barChart.setData(data2);
+
+        LineDataSet set1 = generateLineDataSet(lineEntries, getResources().getColor(R.color.text_grey_light), "minPrice");
+        LineData data = new LineData(xVals, set1);
+        lineChart.setData(data);
+
+        /*k line*/
+        //candleData = generateCandleData();
+        //combinedData.setData(candleData);
+
+//        /*ma5*/
+//        ArrayList<Entry> ma5Entries = new ArrayList<Entry>();
+//        for (int index = 0; index < itemcount; index++) {
+//            ma5Entries.add(new Entry(stockBeans.get(index).getMa5(), index));
+//        }
+//        /*ma10*/
+//        ArrayList<Entry> ma10Entries = new ArrayList<Entry>();
+//        for (int index = 0; index < itemcount; index++) {
+//            ma10Entries.add(new Entry(stockBeans.get(index).getMa10(), index));
+//        }
+//        /*ma20*/
+//        ArrayList<Entry> ma20Entries = new ArrayList<Entry>();
+//        for (int index = 0; index < itemcount; index++) {
+//            ma20Entries.add(new Entry(stockBeans.get(index).getMa20(), index));
+//        }
+
+//        lineData = generateMultiLineData(
+//                generateLineDataSet(ma5Entries, colorMa5, "ma5"),
+//                generateLineDataSet(ma10Entries, colorMa10, "ma10"),
+//                generateLineDataSet(ma20Entries, colorMa20, "ma20"));
+
+        //combinedData.setData(lineData);
+        //mChart.setData(combinedData);//当前屏幕会显示所有的数据
+        setOffset();
+
+        lineChart.invalidate();
+        barChart.invalidate();
+    }
+
+    /*设置量表对齐*/
+    private void setOffset() {
+        float lineLeft = lineChart.getViewPortHandler().offsetLeft();
+        float barLeft = barChart.getViewPortHandler().offsetLeft();
+        float lineRight = lineChart.getViewPortHandler().offsetRight();
+        float barRight = barChart.getViewPortHandler().offsetRight();
+        float offsetLeft, offsetRight;
+ /*注：setExtraLeft...函数是针对图表相对位置计算，比如A表offLeftA=20dp,B表offLeftB=30dp,则A.setExtraLeftOffset(10),并不是30，还有注意单位转换*/
+        if (barLeft < lineLeft) {
+            offsetLeft = Utils.convertPixelsToDp(lineLeft-barLeft);
+            barChart.setExtraLeftOffset(offsetLeft);
+        } else {
+            offsetLeft = Utils.convertPixelsToDp(barLeft-lineLeft);
+            lineChart.setExtraLeftOffset(offsetLeft);
+        }
+  /*注：setExtra...函数是针对图表绝对位置计算，比如A表offRightA=20dp,B表offRightB=30dp,则A.setExtraLeftOffset(30),并不是10，还有注意单位转换*/
+        if (barRight < lineRight) {
+            offsetRight = Utils.convertPixelsToDp(lineRight);
+            barChart.setExtraRightOffset(offsetRight);
+        } else {
+            offsetRight = Utils.convertPixelsToDp(barRight);
+            lineChart.setExtraRightOffset(offsetRight);
+        }
+
+    }
+
+
+/*
+    private void setData(MData mData) {
+        if (mData.getDatas().size() == 0) {
+            lineChart.setNoDataText("暂无数据");
+            return;
+        }
+        //设置y左右两轴最大最小值
+        axisLeft.setAxisMinValue(mData.getMin());
+        axisLeft.setAxisMaxValue(mData.getMax());
+        axisRight.setAxisMinValue(mData.getPercentMin());
+        axisRight.setAxisMaxValue(mData.getPercentMax());
+
+
+        axisLeftBar.setAxisMaxValue(mData.getVolmax());
+        axisLeftBar.setAxisMinValue(0);//即使最小是不是0，也无碍
+        axisLeftBar.setShowOnlyMinMax(true);
+        axisRightBar.setAxisMaxValue(mData.getVolmax());
+        axisRightBar.setAxisMinValue(0);//即使最小是不是0，也无碍
+        axisRightBar.setShowOnlyMinMax(true);
+        //基准线
+        LimitLine ll = new LimitLine(mData.getBaseValue());
+        ll.setLineWidth(1f);
+        ll.setLineColor(Color.RED);
+        ll.enableDashedLine(10f, 10f, 0f);
+        ll.setLineWidth(1);
+        axisLeft.addLimitLine(ll);
+
+
+        ArrayList<Entry> lineCJEntries = new ArrayList<Entry>();
+        ArrayList<Entry> lineJJEntries = new ArrayList<Entry>();
+        ArrayList<String> dateList = new ArrayList<String>();
+        ArrayList<BarEntry> barEntries = new ArrayList<BarEntry>();
+        ArrayList<String> xVals = new ArrayList<String>();
+
+        for (int i = 0; i < mData.getDatas().size(); i++) {
+            //避免数据重复，skip也能正常显示
+            if(mData.getDatas().get(i).time.equals("13:30")){
+                continue;
+            }
+            lineCJEntries.add(new Entry(mData.getDatas().get(i).chengjiaojia, i));
+
+            lineJJEntries.add(new Entry(mData.getDatas().get(i).junjia, i));
+            barEntries.add(new BarEntry(mData.getDatas().get(i).chengjiaoliang, i));
+            dateList.add(mData.getDatas().get(i).time);
+        }
+        d1 = new LineDataSet(lineCJEntries, "成交价");
+        d2 = new LineDataSet(lineJJEntries, "均价");
+        barDataSet = new BarDataSet(barEntries, "成交量");
+
+        d1.setCircleRadius(0);
+        d2.setCircleRadius(0);
+        d1.setColor(Color.BLUE);
+        d2.setColor(Color.RED);
+        d1.setHighLightColor(Color.BLACK);
+        d2.setHighlightEnabled(false);
+        d1.setDrawFilled(true);
+
+        barDataSet.setBarSpacePercent(0); //bar空隙
+        barDataSet.setHighLightColor(Color.BLACK);
+        barDataSet.setHighLightAlpha(255);
+        barDataSet.setDrawValues(false);
+        //谁为基准
+        d1.setAxisDependency(YAxis.AxisDependency.LEFT);
+        // d2.setAxisDependency(YAxis.AxisDependency.RIGHT);
+        ArrayList<ILineDataSet> sets = new ArrayList<ILineDataSet>();
+        sets.add(d1);
+        sets.add(d2);
+        LineData cd = new LineData(dateList, sets);
+        lineChart.setData(cd);
+
+        BarData barData=new BarData(dateList,barDataSet);
+        barChart.setData(barData);
+        lineChart.invalidate();//刷新图
+        barChart.invalidate();
+    }
+    */
 }
