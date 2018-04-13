@@ -669,6 +669,54 @@ public class LineChartRenderer extends LineRadarRenderer {
     @Override
     public void drawHighlighted(Canvas c, Highlight[] indices) {
 
+        LineData lineData = mChart.getLineData();
+
+        for (Highlight high : indices) {
+
+            final int minDataSetIndex = high.getDataSetIndex() == -1
+                    ? 0
+                    : high.getDataSetIndex();
+            final int maxDataSetIndex = high.getDataSetIndex() == -1
+                    ? lineData.getDataSetCount()
+                    : (high.getDataSetIndex() + 1);
+            if (maxDataSetIndex - minDataSetIndex < 1)
+                continue;
+
+            for (int dataSetIndex = minDataSetIndex;
+                 dataSetIndex < maxDataSetIndex;
+                 dataSetIndex++) {
+
+                ILineDataSet set = lineData.getDataSetByIndex(dataSetIndex);
+
+                if (set == null || !set.isHighlightEnabled())
+                    continue;
+
+                int xIndex = high.getXIndex(); // get the
+                // x-position
+
+                if (xIndex > mChart.getXChartMax() * mAnimator.getPhaseX())
+                    continue;
+
+                final float yVal = set.getYValForXIndex(xIndex);
+                /*注释此处，防止数据为空时，无高亮*/
+           /*     if (Float.isNaN(yVal))
+                    continue;*/
+
+                float y = yVal * mAnimator.getPhaseY(); // get
+                // the
+                // y-position
+
+                float[] pts = new float[]{
+                        xIndex, y
+                };
+
+                mChart.getTransformer(set.getAxisDependency()).pointValuesToPixel(pts);
+
+                // draw the lines
+                drawHighlightLines(c, pts, set);
+            }
+        }
+        /*
         for (int i = 0; i < indices.length; i++) {
 
             ILineDataSet set = mChart.getLineData().getDataSetByIndex(indices[i]
@@ -699,7 +747,7 @@ public class LineChartRenderer extends LineRadarRenderer {
 
             // draw the lines
             drawHighlightLines(c, pts, set);
-        }
+        }*/
     }
 
     /**

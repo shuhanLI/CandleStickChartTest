@@ -227,6 +227,10 @@ public abstract class BarLineChartBase<T extends BarLineScatterCandleBubbleData<
             }
         }
 
+        // if highlighting is enabled
+        if (valuesToHighlight())
+            mRenderer.drawHighlighted(canvas, mIndicesToHighlight);
+
         // make sure the graph values and grid cannot be drawn outside the
         // content-rect
         int clipRestoreCount = canvas.save();
@@ -247,9 +251,6 @@ public abstract class BarLineChartBase<T extends BarLineScatterCandleBubbleData<
 
         mRenderer.drawData(canvas);
 
-        // if highlighting is enabled
-        if (valuesToHighlight())
-            mRenderer.drawHighlighted(canvas, mIndicesToHighlight);
 
         // Removes clipping rectangle
         canvas.restoreToCount(clipRestoreCount);
@@ -274,6 +275,7 @@ public abstract class BarLineChartBase<T extends BarLineScatterCandleBubbleData<
         mLegendRenderer.renderLegend(canvas);
 
         drawMarkers(canvas);
+
 
         drawDescription(canvas);
 

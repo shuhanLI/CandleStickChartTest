@@ -1,16 +1,20 @@
 package android.colin.democandlechart;
 
+import android.content.Context;
 import android.graphics.Color;
 import android.graphics.Paint;
+import android.graphics.drawable.Drawable;
 import android.os.AsyncTask;
 import android.os.Handler;
 import android.os.Message;
+import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.DragEvent;
 import android.view.View;
 import android.widget.Button;
+import android.widget.TextView;
 
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
@@ -24,6 +28,7 @@ import com.github.mikephil.charting.charts.CombinedChart;
 import com.github.mikephil.charting.charts.LineChart;
 import com.github.mikephil.charting.components.Legend;
 import com.github.mikephil.charting.components.LimitLine;
+import com.github.mikephil.charting.components.MarkerView;
 import com.github.mikephil.charting.components.XAxis;
 import com.github.mikephil.charting.components.YAxis;
 import com.github.mikephil.charting.data.BarData;
@@ -62,6 +67,7 @@ public class MainActivity extends AppCompatActivity {
     private BarChart barChart;
     private Button btn;
     private int itemcount;
+    private int linechartcount;
     private LineData lineData;
     private CandleData candleData;
     private CombinedData combinedData;
@@ -85,24 +91,21 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_combine);
+        setContentView(R.layout.activity_kline);
 
-        //mChart = (CombinedChart) findViewById(R.id.chart);      //http://money18.on.cc/chartdata/d1/price/02318_price_d1.txt
+        mChart = (CombinedChart) findViewById(R.id.kline_chart);      //http://money18.on.cc/chartdata/d1/price/02318_price_d1.txt
         lineChart = (LineChart) findViewById(R.id.lchart);       //http://money18.on.cc/chartdata/full/price/00700_price_full.txt
         barChart = (BarChart) findViewById(R.id.bchart);
-        StringRequest stringRequest = new StringRequest(Request.Method.GET, "http://money18.on.cc/chartdata/d1/price/02318_price_d1.txt",
+        StringRequest stringRequest = new StringRequest(Request.Method.GET, "http://money18.on.cc/chartdata/full/price/00700_price_full.txt",
                 new Response.Listener<String>() {
                     @Override
                     public void onResponse(String response) {
                         //System.out.println("-----Main setdata-----:"+response);
-                        Model.setDataF(response);
+                        Model.setData(response);
 
-                        initChartF();
+                        initChart();
 
-                        loadChartDataF();
-
-
-
+                        loadChartData();
                     }
                 }, new Response.ErrorListener() {
             @Override
@@ -113,9 +116,6 @@ public class MainActivity extends AppCompatActivity {
         RequestQueue mQueue = Volley.newRequestQueue(this);
         mQueue.add(stringRequest);
 
-
-//        initChart();
-//        loadChartData();
     }
 
 
@@ -159,23 +159,23 @@ public class MainActivity extends AppCompatActivity {
         rightAxis.setEnabled(false);
 
         int[] colors = {colorMa5, colorMa10, colorMa20};
-        String[] labels = {"MA5", "MA10", "MA20"};
+        String[] labels = {"MA10", "MA20", "MA50"};
         Legend legend = mChart.getLegend();
         legend.setCustom(colors, labels);
         legend.setPosition(Legend.LegendPosition.ABOVE_CHART_RIGHT);
-        legend.setTextColor(Color.WHITE);
+        legend.setTextColor(Color.BLACK);
 
         mChart.setOnChartValueSelectedListener(new OnChartValueSelectedListener() {
             @Override
             public void onValueSelected(Entry entry, int i, Highlight highlight) {
-                CandleEntry candleEntry = (CandleEntry) entry;
-                float change = (candleEntry.getClose() - candleEntry.getOpen()) / candleEntry.getOpen();
-                NumberFormat nf = NumberFormat.getPercentInstance();
-                nf.setMaximumFractionDigits(2);
-                String changePercentage = nf.format(Double.valueOf(String.valueOf(change)));
-                Log.d("qqq", "最高" + candleEntry.getHigh() + " 最低" + candleEntry.getLow() +
-                        " 开盘" + candleEntry.getOpen() + " 收盘" + candleEntry.getClose() +
-                        " 涨跌幅" + changePercentage);
+//                CandleEntry candleEntry = (CandleEntry) entry;
+//                float change = (candleEntry.getClose() - candleEntry.getOpen()) / candleEntry.getOpen();
+//                NumberFormat nf = NumberFormat.getPercentInstance();
+//                nf.setMaximumFractionDigits(2);
+//                String changePercentage = nf.format(Double.valueOf(String.valueOf(change)));
+//                Log.d("qqq", "最高" + candleEntry.getHigh() + " 最低" + candleEntry.getLow() +
+//                        " 开盘" + candleEntry.getOpen() + " 收盘" + candleEntry.getClose() +
+//                        " 涨跌幅" + changePercentage);
             }
 
             @Override
@@ -189,14 +189,14 @@ public class MainActivity extends AppCompatActivity {
     private void loadChartData() {
         mChart.resetTracking();
 
-        candleEntries = Model.getCandleEntries();
+        candleEntries = Model.getCandleEntries_1month();
 
         itemcount = candleEntries.size();
         System.out.println("----itemcount : "+itemcount);
         //List<StockListBean.eachTime> stockBeans = Model.getData();
         List<String> DateInfo = Model.getDate();
         xVals = new ArrayList<>();
-        for (int i = 0; i < itemcount; i++) {
+        for (int i = DateInfo.size()-itemcount; i < DateInfo.size(); i++) {
             xVals.add(DateInfo.get(i));
         }
 
@@ -206,35 +206,26 @@ public class MainActivity extends AppCompatActivity {
         candleData = generateCandleData();
         combinedData.setData(candleData);
 
-//        /*ma5*/
-//        ArrayList<Entry> ma5Entries = new ArrayList<Entry>();
-//        for (int index = 0; index < itemcount; index++) {
-//            ma5Entries.add(new Entry(stockBeans.get(index).getMa5(), index));
-//        }
-//        /*ma10*/
-//        ArrayList<Entry> ma10Entries = new ArrayList<Entry>();
-//        for (int index = 0; index < itemcount; index++) {
-//            ma10Entries.add(new Entry(stockBeans.get(index).getMa10(), index));
-//        }
-//        /*ma20*/
-//        ArrayList<Entry> ma20Entries = new ArrayList<Entry>();
-//        for (int index = 0; index < itemcount; index++) {
-//            ma20Entries.add(new Entry(stockBeans.get(index).getMa20(), index));
-//        }
+        /*ma10*/
+        List<Entry> ma10Entries = Model.getMa10Entries_1month();
+        /*ma20*/
+        List<Entry> ma20Entries = Model.getMa20Entries_1month();
+        /*ma50*/
+        List<Entry> ma50Entries = Model.getMa50Entries_1month();
 
-//        lineData = generateMultiLineData(
-//                generateLineDataSet(ma5Entries, colorMa5, "ma5"),
-//                generateLineDataSet(ma10Entries, colorMa10, "ma10"),
-//                generateLineDataSet(ma20Entries, colorMa20, "ma20"));
+        lineData = generateMultiLineData(
+                generateLineDataSet(ma10Entries, colorMa5, "ma10"),
+                generateLineDataSet(ma20Entries, colorMa10, "ma20"),
+                generateLineDataSet(ma50Entries, colorMa20, "ma50"));
 
-        //combinedData.setData(lineData);
+        combinedData.setData(lineData);
         mChart.setData(combinedData);//当前屏幕会显示所有的数据
         mChart.invalidate();
     }
 
-    private BarDataSet generateBarDataSet(List<BarEntry> entries, int color, String label){
+    private BarDataSet generateBarDataSet(List<BarEntry> entries, List<Integer> colorArr, String label){
         BarDataSet set = new BarDataSet(entries, label);
-        set.setColor(color);
+        set.setColors(colorArr);
         barChart.getLegend().setPosition(Legend.LegendPosition.ABOVE_CHART_LEFT);//设置注解的位置在左上方
         barChart.getLegend().setForm(Legend.LegendForm.CIRCLE);//这是左边显示小图标的形状
 
@@ -257,11 +248,17 @@ public class MainActivity extends AppCompatActivity {
         set.setColor(color);
         set.setLineWidth(1f);
         //set.setDrawCubic(true);//圆滑曲线
+        set.setHighlightEnabled(true);
+        set.setDrawHighlightIndicators(true);
+        set.setHighLightColor(Color.BLACK);
+        set.setLineWidth(2);
         set.setDrawCircles(false);
         set.setDrawCircleHole(false);
         set.setDrawValues(false);
-        set.setHighlightEnabled(false);
         set.setAxisDependency(YAxis.AxisDependency.LEFT);
+        set.setDrawFilled(true);
+        Drawable drawable = ContextCompat.getDrawable(this, R.drawable.fade_red);
+        set.setFillDrawable(drawable);
 
         return set;
     }
@@ -306,15 +303,17 @@ public class MainActivity extends AppCompatActivity {
     // 分时图
     private void initChartF() {
         lineChart.setScaleEnabled(false);
-        lineChart.setDrawBorders(true);
+        lineChart.setDrawBorders(false);
         lineChart.setBorderWidth(1);
         lineChart.setBorderColor(getResources().getColor(R.color.edit_text_underline));
         lineChart.setDescription("");
         Legend lineChartLegend = lineChart.getLegend();
         lineChartLegend.setEnabled(false);
-
+        lineChart.setDrawMarkerViews(true);
         lineChart.setTouchEnabled(true); // 设置是否可以触摸
         lineChart.setDragEnabled(true);// 是否可以拖拽
+        CustomMarkerView mv = new CustomMarkerView(this, R.layout.mymarkerview);
+        lineChart.setMarkerView(mv);
 
         lineChart.setScaleXEnabled(true); //是否可以缩放 仅x轴
         lineChart.setScaleYEnabled(true); //是否可以缩放 仅y轴
@@ -326,9 +325,13 @@ public class MainActivity extends AppCompatActivity {
 
         barChart.setScaleEnabled(false);
         barChart.setDrawBorders(false);
+        barChart.setScaleXEnabled(true); //是否可以缩放 仅x轴
+        barChart.setScaleYEnabled(true); //是否可以缩放 仅y轴
+        barChart.setPinchZoom(true);  //设置x轴和y轴能否同时缩放。默认是否
       /*  barChart.setBorderWidth(1);
         barChart.setBorderColor(getResources().getColor(R.color.grayLine));*/
         barChart.setDescription("");
+        barChart.setMarkerView(mv);
         Legend barChartLegend = barChart.getLegend();
         barChartLegend.setEnabled(false);
 
@@ -391,31 +394,36 @@ public class MainActivity extends AppCompatActivity {
         xAxis.setAxisLineColor(getResources().getColor(R.color.edit_text_underline));
         axisLeft.setGridColor(getResources().getColor(R.color.edit_text_underline));
         //axisRight.setAxisLineColor(getResources().getColor(R.color.edit_text_underline));
-
-            /* 联动高亮listener */
         lineChart.setOnChartValueSelectedListener(new OnChartValueSelectedListener() {
             @Override
             public void onValueSelected(Entry e, int dataSetIndex, Highlight h) {
-                barChart.highlightValues(new Highlight[]{h});
-                System.out.println("listener worked");
+//                barChart.setHighlightValue(new Highlight(h.getXIndex(), 0));
+
+                barChart.highlightValue(new Highlight(h.getXIndex(), 0));
+
+                // lineChart.setHighlightValue(h);
             }
 
             @Override
             public void onNothingSelected() {
-
+                barChart.highlightValue(null);
             }
         });
         barChart.setOnChartValueSelectedListener(new OnChartValueSelectedListener() {
             @Override
             public void onValueSelected(Entry e, int dataSetIndex, Highlight h) {
-                lineChart.highlightValues(new Highlight[]{h});
+                lineChart.highlightValue(new Highlight(h.getXIndex(), 0));
+                // lineChart.setHighlightValue(new Highlight(h.getXIndex(), 0));//此函数已经返回highlightBValues的变量，并且刷新，故上面方法可以注释
+                //barChart.setHighlightValue(h);
             }
 
             @Override
             public void onNothingSelected() {
-
+                lineChart.highlightValue(null);
             }
         });
+
+
 
     }
 
@@ -426,7 +434,8 @@ public class MainActivity extends AppCompatActivity {
         List<Entry> lineEntries = Model.getLineEntries();
         List<BarEntry> barEntries = Model.getBarEntries();
 
-        itemcount = lineEntries.size();
+        itemcount = barEntries.size();
+        linechartcount = lineEntries.size();
         System.out.println("----itemcount : "+itemcount);
         //List<StockListBean.eachTime> stockBeans = Model.getData();
         List<String> MinInfo = Model.getMin();
@@ -434,14 +443,32 @@ public class MainActivity extends AppCompatActivity {
         for (int i = 0; i < itemcount; i++) {
             xVals.add(MinInfo.get(i));
         }
-
-        BarDataSet set2 = generateBarDataSet(barEntries, getResources().getColor(R.color.text_grey_light), "minVol");
+        List<Integer> colorArray = new ArrayList<>();
+        List<Float> priceArr = Model.getPrice();
+        colorArray.add(getResources().getColor(R.color.text_grey));
+        for(int i = 1; i < linechartcount; i ++){
+            System.out.println("----check barchart values-----: barEntries[i-1]: "+ priceArr.get(i-1) + "; barEntries[i]: " + priceArr.get(i-1));
+            if(priceArr.get(i)>priceArr.get(i-1)){
+                colorArray.add(getResources().getColor(R.color.text_green));
+            }
+            else{
+                colorArray.add(getResources().getColor(R.color.text_red));
+            }
+        }
+        BarDataSet set2 = generateBarDataSet(barEntries, colorArray, "minVol");
+        set2.setHighlightEnabled(true);
+        //set2.setDrawHighlightIndicators(true);
+        set2.setHighLightColor(Color.BLACK);
         BarData data2 = new BarData(xVals, set2);
         barChart.setData(data2);
 
-        LineDataSet set1 = generateLineDataSet(lineEntries, getResources().getColor(R.color.text_grey_light), "minPrice");
+        LineDataSet set1 = generateLineDataSet(lineEntries, getResources().getColor(R.color.line_chart_color), "minPrice");
+
+
         LineData data = new LineData(xVals, set1);
         lineChart.setData(data);
+
+
 
         /*k line*/
         //candleData = generateCandleData();
@@ -579,4 +606,34 @@ public class MainActivity extends AppCompatActivity {
         barChart.invalidate();
     }
     */
+public class CustomMarkerView extends MarkerView {
+
+    private TextView tvContent;
+
+    public CustomMarkerView (Context context, int layoutResource) {
+        super(context, layoutResource);
+        // this markerview only displays a textview
+        tvContent = (TextView) findViewById(R.id.tvContent);
+    }
+
+    // callbacks everytime the MarkerView is redrawn, can be used to update the
+    // content (user-interface)
+    @Override
+    public void refreshContent(Entry e, Highlight highlight) {
+        tvContent.setText("" + e.getVal()); // set the entry-value as the display text
+    }
+
+    @Override
+    public int getXOffset(float xpos) {
+        // this will center the marker-view horizontally
+        return -(getWidth() / 2);
+    }
+
+    @Override
+    public int getYOffset(float ypos) {
+        // this will cause the marker-view to be above the selected value
+        return -getHeight();
+    }
+
+    }
 }
